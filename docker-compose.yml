@@ -1,0 +1,60 @@
+services:
+  app:
+    build:
+      context: ./sys_beneficiarios
+      dockerfile: Dockerfile
+    container_name: sys_beneficiarios_app
+    volumes:
+      - ./sys_beneficiarios:/var/www/html
+      # Isolar dirs de escritura a volúmenes nombrados
+      - storage_data:/var/www/html/storage
+      - cache_data:/var/www/html/bootstrap/cache
+    depends_on:
+      - mysql
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sys_beneficiarios_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./sys_beneficiarios:/var/www/html:ro
+      - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - backend
+
+  mysql:
+    image: mysql:8.0
+    container_name: sys_beneficiarios_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: sys_beneficiarios
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - backend
+
+  node:
+    image: node:20-alpine
+    container_name: sys_beneficiarios_node
+    working_dir: /var/www/html
+    command: sh -c "tail -f /dev/null"
+    volumes:
+      - ./sys_beneficiarios:/var/www/html
+    networks:
+      - backend
+
+volumes:
+  db_data:
+  storage_data:
+  cache_data:
+
+networks:
+  backend:
+    driver: bridge
