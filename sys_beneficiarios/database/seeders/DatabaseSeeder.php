@@ -17,6 +17,12 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             AdminUserSeeder::class,
             CatalogosSeeder::class,
+            Salud360RolesSeeder::class,
         ]);
+
+        // Semilla demo opcional (solo en local)
+        if (app()->environment('local')) {
+            $this->call(Salud360DemoSeeder::class);
+        }
     }
 }

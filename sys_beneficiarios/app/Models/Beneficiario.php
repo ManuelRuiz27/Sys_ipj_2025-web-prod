@@ -82,4 +82,14 @@ class Beneficiario extends Model
     {
         return $this->hasOne(Domicilio::class, 'beneficiario_id');
     }
+
+    public function salud360Assignment()
+    {
+        return $this->hasOne(Salud360Assignment::class, 'beneficiario_id');
+    }
+
+    public function salud360Sessions()
+    {
+        return $this->hasMany(Salud360Session::class, 'beneficiario_id');
+    }
 }

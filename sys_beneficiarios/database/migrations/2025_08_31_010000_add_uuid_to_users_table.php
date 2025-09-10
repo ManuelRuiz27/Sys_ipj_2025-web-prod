@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -15,8 +16,16 @@ return new class extends Migration
             }
         });
 
-        // Backfill existing users
-        DB::table('users')->whereNull('uuid')->update(['uuid' => DB::raw('UUID()')]);
+        // Backfill existing users (compatible con SQLite)
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
+            $rows = DB::table('users')->whereNull('uuid')->select('id')->get();
+            foreach ($rows as $row) {
+                DB::table('users')->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]);
+            }
+        } else {
+            DB::table('users')->whereNull('uuid')->update(['uuid' => DB::raw('UUID()')]);
+        }
 
         // Ensure not null going forward
         Schema::table('users', function (Blueprint $table) {
@@ -34,4 +43,3 @@ return new class extends Migration
         });
     }
 };
-

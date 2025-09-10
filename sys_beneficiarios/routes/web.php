@@ -96,3 +96,52 @@ require __DIR__.'/auth.php';
 
 // Compatibilidad adicional: asegurar que /mi-progreso/kpis responda 200 OK
 Route::get('/mi-progreso/kpis', [DashboardController::class, 'miProgresoKpis'])->middleware(['auth','role:capturista']);
+
+// -------------------- SALUD 360 --------------------
+use App\Http\Controllers\S360\S360AdminController;
+use App\Http\Controllers\S360\S360BienestarController;
+use App\Http\Controllers\S360\S360Enc360Controller;
+use App\Http\Controllers\S360\S360PsicoController;
+
+// Admin
+Route::middleware(['auth','role:admin','access.log'])->prefix('s360/admin')->name('s360.admin.')->group(function () {
+    Route::get('dash', [S360AdminController::class, 'dash'])->name('dash')->middleware('permission:s360.manage');
+    Route::post('users', [S360AdminController::class, 'storeUsers'])->name('users.store')->middleware(['permission:s360.manage','throttle:10,1']);
+});
+
+// Encargado Bienestar
+Route::middleware(['auth','role:encargado_bienestar','access.log'])->prefix('s360/bienestar')->name('s360.bienestar.')->group(function () {
+    Route::get('/', [S360BienestarController::class, 'view'])->name('view');
+    Route::get('dash', [S360BienestarController::class, 'dash'])->name('dash')->middleware('permission:s360.enc_bienestar.view_dash');
+    Route::get('sesiones/ultimas', [S360BienestarController::class, 'latestSessions'])->name('sesiones.latest')->middleware('permission:s360.enc_bienestar.view_dash');
+    Route::get('citas/proximas', [S360BienestarController::class, 'upcoming'])->name('citas.upcoming')->middleware('permission:s360.enc_bienestar.view_dash');
+    Route::post('enc360', [S360BienestarController::class, 'storeEncargado360'])->name('enc360.store')->middleware(['permission:s360.enc_bienestar.manage','throttle:10,1']);
+});
+
+// Encargado 360
+Route::middleware(['auth','role:encargado_360','access.log'])->prefix('s360/enc360')->name('s360.enc360.')->group(function () {
+    Route::get('/', [S360Enc360Controller::class, 'view'])->name('view');
+    Route::get('dash', [S360Enc360Controller::class, 'dash'])->name('dash')->middleware('permission:s360.enc360.view_dash');
+    Route::get('sesiones/ultimas', [S360Enc360Controller::class, 'latestSessions'])->name('sesiones.latest')->middleware('permission:s360.enc360.view_dash');
+    Route::get('citas/proximas', [S360Enc360Controller::class, 'upcoming'])->name('citas.upcoming')->middleware('permission:s360.enc360.view_dash');
+    Route::get('asignaciones', [S360Enc360Controller::class, 'asignacionesView'])->name('asignaciones')->middleware('permission:s360.enc360.view_dash');
+    Route::get('psicologos', [S360Enc360Controller::class, 'psicologosView'])->name('psicologos.view')->middleware('permission:s360.enc360.view_dash');
+    Route::post('psicologos', [S360Enc360Controller::class, 'storePsicologo'])->name('psicologos.store')->middleware(['permission:s360.enc360.assign','throttle:10,1']);
+    Route::post('assign', [S360Enc360Controller::class, 'assign'])->name('assign')->middleware('permission:s360.enc360.assign');
+    Route::put('assign/{beneficiario}', [S360Enc360Controller::class, 'reassign'])->name('assign.update')->middleware('permission:s360.enc360.assign');
+    Route::get('pacientes', [S360Enc360Controller::class, 'patients'])->name('patients')->middleware('permission:s360.enc360.view_dash');
+    Route::get('psicologos/list', [S360Enc360Controller::class, 'psicologos'])->name('psicologos.list')->middleware('permission:s360.enc360.view_dash');
+    Route::get('sesiones/{session}/manage', [S360Enc360Controller::class, 'manageSessionView'])->name('sesiones.manage');
+    Route::put('sesiones/{session}', [S360Enc360Controller::class, 'updateSession'])->name('sesiones.update')->middleware('permission:s360.data.update_by_enc360');
+});
+
+// Psicólogo
+Route::middleware(['auth','role:psicologo','access.log'])->prefix('s360/psico')->name('s360.psico.')->group(function () {
+    Route::get('/', [S360PsicoController::class, 'pacientesView'])->name('view');
+    Route::get('pacientes', [S360PsicoController::class, 'pacientes'])->name('pacientes')->middleware('permission:s360.psico.read_patients');
+    Route::get('paciente/{id}', [S360PsicoController::class, 'showPaciente'])->name('paciente')->middleware('permission:s360.psico.read_patients');
+    Route::get('paciente/{id}/show', [S360PsicoController::class, 'pacienteView'])->name('paciente.view');
+    Route::post('sesiones', [S360PsicoController::class, 'storeSesion'])->name('sesiones.store')->middleware('permission:s360.psico.create_session');
+    Route::get('sesiones/{beneficiario}', [S360PsicoController::class, 'historial'])->name('sesiones.historial')->middleware('permission:s360.psico.view_history');
+    Route::get('sesiones/{beneficiario}/show', [S360PsicoController::class, 'historialView'])->name('sesiones.historial.view');
+});

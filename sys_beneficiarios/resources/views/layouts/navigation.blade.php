@@ -1,4 +1,4 @@
-﻿<nav class="navbar navbar-expand-lg navbar-dark bg-primary border-bottom sticky-top py-0">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary border-bottom sticky-top py-0">
     <div class="container-fluid px-0">
         <a class="navbar-brand d-flex align-items-center" href="{{ Auth::user() && Auth::user()->hasRole('admin') ? route('admin.home') : (Auth::user() && Auth::user()->hasRole('encargado') ? route('encargado.home') : (Auth::user() && Auth::user()->hasRole('capturista') ? route('capturista.home') : route('dashboard'))) }}">
             <span class="fw-semibold text-white">Sys_IPJ</span>
@@ -45,6 +45,44 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.catalogos.*') ? 'active' : '' }}" href="{{ route('admin.catalogos.index') }}">{{ __('Catálogos') }}</a>
                 </li>
+                <!-- Salud360 (Admin) -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->is('s360/*') ? 'active' : '' }}" href="#" id="s360Dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Salud360
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="s360Dropdown">
+                        <li><a class="dropdown-item" href="{{ route('s360.admin.dash') }}">Admin Dash</a></li>
+                        <li><a class="dropdown-item" href="{{ route('s360.bienestar.view') }}">Bienestar Dash</a></li>
+                        <li><a class="dropdown-item" href="{{ route('s360.enc360.view') }}">Enc360 Dash</a></li>
+                    </ul>
+                </li>
+                @endrole
+
+                @role('encargado_bienestar')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.bienestar.*') ? 'active' : '' }}" href="{{ route('s360.bienestar.view') }}">Bienestar Dash</a>
+                </li>
+                @endrole
+
+                @role('encargado_360')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.enc360.view') ? 'active' : '' }}" href="{{ route('s360.enc360.view') }}">Enc360 Dash</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.enc360.asignaciones') ? 'active' : '' }}" href="{{ route('s360.enc360.asignaciones') }}">Asignaciones</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.enc360.psicologos.*') ? 'active' : '' }}" href="{{ route('s360.enc360.psicologos.view') }}">Psicólogos</a>
+                </li>
+                @endrole
+
+                @role('psicologo')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.psico.view') ? 'active' : '' }}" href="{{ route('s360.psico.view') }}">Mis Pacientes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('s360.psico.sesiones.*') ? 'active' : '' }}" href="{{ route('s360.psico.view') }}">Historial</a>
+                </li>
                 @endrole
             </ul>
 
@@ -68,7 +106,6 @@
         </div>
     </div>
 </nav>
-
 
 
 

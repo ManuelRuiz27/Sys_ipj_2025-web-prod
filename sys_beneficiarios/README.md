@@ -1,107 +1,174 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sys IPJ 2025 — Módulo Beneficiarios
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplicación Laravel 11 para la gestión y registro de beneficiarios, con autenticación (Breeze), roles (Spatie Permission), paneles con KPIs y carga de catálogos (municipios y secciones). Se ejecuta en Docker (PHP-FPM + Nginx + MySQL + Node).
 
-## Docker
+- Código de este módulo: este directorio (`sys_beneficiarios/`)
+- Orquestación Docker: `../docker-compose.yml`
+- Nginx: `../.docker/nginx/default.conf`
 
-Sigue estos pasos para levantar el entorno dockerizado:
+## Arranque rápido (Docker)
+
+1) Variables de entorno:
 
 ```
 cp .env.example .env
+```
+
+Revisa en `.env` (valores por defecto para Docker):
+- `APP_URL=http://localhost`
+- `DB_CONNECTION=mysql`
+- `DB_HOST=mysql`
+- `DB_PORT=3306`
+- `DB_DATABASE=sys_beneficiarios`
+- `DB_USERNAME=root`
+- `DB_PASSWORD=secret`
+
+2) Levanta contenedores desde la raíz del repo:
+
+```
+# Ejecutar desde el directorio raíz del repo
+cd ..
 docker compose up -d --build
+```
+
+3) Inicializa la app (clave, migraciones, seeders, assets):
+
+```
+# Dentro del contenedor app
 docker compose exec app php artisan key:generate
-docker compose exec app php artisan migrate
+# Migraciones + seeders base (roles, admin y catálogos si hay CSVs)
+docker compose exec app php artisan migrate --seed
+# Compilación de assets
+docker compose exec node npm install
 docker compose exec node npm run build
 ```
 
-Servicios:
+4) Acceso web:
 
-- app: PHP-FPM 8.3 con extensiones `pdo_mysql`, `gd`.
-- nginx: sirve `public/` en `http://localhost:8080`.
-- mysql: MySQL 8, credenciales root/secret, DB `sys_beneficiarios`.
-- node: Node 20 para construir assets con Vite.
+- URL: `http://localhost`
+- Usuario admin por defecto: `admin@example.com` / `Password123`
 
-Para instalar auth Breeze y paquetes de Spatie:
+Servicios en Docker:
+- `app`: PHP-FPM 8.3 (Laravel)
+- `nginx`: sirve `public/` en puerto 80
+- `mysql`: MySQL 8 (DB `sys_beneficiarios`, credenciales root/secret)
+- `node`: Node 20 para Vite
 
-```
-docker compose exec app composer require laravel/breeze spatie/laravel-permission spatie/laravel-activitylog
-docker compose exec app php artisan breeze:install blade
-docker compose exec node npm i && docker compose exec node npm run build
-```
+## Catálogos (Municipios y Secciones)
 
-## Importación de catálogos
+Coloca archivos CSV en `database/seeders/data/`:
+- `municipios.csv` con columnas: `clave,nombre`
+- `secciones.csv` con columnas: `seccional,distrito_local,distrito_federal` y una de `municipio_id` o `municipio_clave`
+
+Importa desde el contenedor `app`:
 
 ```
 docker compose exec app php artisan catalogos:import --path=database/seeders/data
 ```
 
-## Accesos por rol
+Opciones útiles:
+- `--fresh` limpia tablas antes de importar
+- `--sql=/ruta/a/archivo.sql` ejecuta SQL previo a la importación
 
-- Admin: `/admin` (KPIs, gráficos Chart.js, gestión de usuarios y beneficiarios)
-- Encargado: `/encargado` (KPIs y listados)
-- Capturista: `/capturista` (mi progreso, wizard en `/captura/wizard`, mis registros en `/mis-registros`)
+## Rutas y roles (resumen)
 
-Nota: Registro público deshabilitado. Los usuarios se crean desde el panel de Admin.
+- Admin:
+  - Panel: `/admin`
+  - KPIs: `/admin/kpis`
+  - Usuarios: `/admin/usuarios`
+  - Beneficiarios: `/admin/beneficiarios` (incluye export)
+  - Catálogos: `/admin/catalogos`
+- Encargado:
+  - Panel: `/encargado`
+  - KPIs: `/encargado/kpis`
+  - Beneficiarios: `/encargado/beneficiarios` (listado/detalle/export)
+- Capturista:
+  - Panel: `/capturista`
+  - KPIs personales: `/capturista/kpis` (alias: `/mi-progreso/kpis`)
+  - Mis registros: `/mis-registros`
+- Recursos comunes: `beneficiarios` y `domicilios` (según rol)
+- API pública: `GET /api/secciones/{seccional}` (throttle 30/min)
 
-## About Laravel
+Código fuente relevante:
+- Rutas web: `routes/web.php`
+- API: `routes/api.php` y `app/Http/Controllers/Api/SeccionesController.php`
+- Dashboard/KPIs: `app/Http/Controllers/DashboardController.php`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Desarrollo
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Vite en modo dev (hot reload):
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```
+docker compose exec node npm run dev
+```
 
-## Learning Laravel
+- Artisan y pruebas:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+docker compose exec app php artisan migrate:fresh --seed
+docker compose exec app php artisan test
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Pruebas
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Pruebas en `tests/` (Feature y Unit). Ejecuta:
 
-## Laravel Sponsors
+```
+docker compose exec app php artisan test
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Guía para nuevas funcionalidades
 
-### Premium Partners
+- Rutas: agrega en `routes/web.php` (o `routes/api.php`).
+- Controladores: crea en `app/Http/Controllers/...` y asigna middleware de rol si aplica.
+- Modelos/Migraciones: en `app/Models` y `database/migrations` (usa `php artisan make:model -m`).
+- Vistas: en `resources/views` (layouts, parciales y vistas por rol).
+- Permisos/Roles: usa `spatie/laravel-permission` y seeders para roles nuevos.
+- Pruebas: agrega en `tests/Feature`/`tests/Unit` cubriendo rutas, políticas y flujos.
+- Frontend: JS/SCSS en `resources/js` y `resources/scss` (compila con Vite).
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## Despliegue
 
-## Contributing
+- Ajusta `server_name` en `../.docker/nginx/default.conf`.
+- Configura `.env` con `APP_ENV=production`, `APP_DEBUG=false` y `APP_URL`.
+- Compila assets y cachea configuración/rutas/vistas.
+- Más detalles: consulta `../docs/despliegue.md`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Troubleshooting
 
-## Code of Conduct
+- Logs de Laravel: `storage/logs/`
+- Nginx: `/var/log/nginx/error.log` y `access.log`
+- MySQL: volumen `db_data` del compose
+- Guía: `../docs/troubleshooting.md`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Roadmap
 
-## Security Vulnerabilities
+- Exportaciones avanzadas: CSV/Excel con columnas seleccionables y filtros guardados.
+- Asignación de municipios a encargados desde UI (búsqueda, asignación masiva).
+- Wizard de importación de catálogos con validación previa y modo "dry-run".
+- Auditoría detallada por registro (diff de cambios via activity log) y vistas dedicadas.
+- Notificaciones (correo y en-app) para eventos clave: nuevos registros, asignaciones, errores de importación.
+- API con tokens personales (lectura de catálogos y beneficiarios) y documentación OpenAPI.
+- Seguridad: 2FA opcional para usuarios y políticas de password endurecidas.
+- Eliminación lógica (soft deletes) y papelera para restaurar beneficiarios.
+- Observabilidad: más métricas de KPIs y endpoints de salud.
+- Calidad: ampliar cobertura de pruebas y escenarios e2e de flujos críticos.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Changelog
 
-## License
+### [Unreleased]
+- Nuevas exportaciones y filtros avanzados en listados.
+- UI para asignaciones de municipios a encargados.
+- Import wizard con validaciones y "dry-run".
+- Endpoints API autenticados por token (solo lectura).
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 0.1.0 — Base inicial
+- Autenticación con Breeze y roles con Spatie Permission.
+- CRUDs base de beneficiarios y domicilios.
+- Paneles y KPIs por rol (admin, encargado, capturista).
+- Importación de catálogos (municipios y secciones) vía comando artisan.
+- Infra de Docker (app, nginx, mysql, node) y build de assets con Vite.
+
+## Licencia
+
+Proyecto interno del equipo. Uso restringido según políticas vigentes.
