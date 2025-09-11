@@ -1,6 +1,4 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container py-4">
   <h1 class="h5 mb-3">Psicólogos</h1>
 
@@ -50,7 +48,6 @@
       </div>
     </div>
   </div>
-    
 </div>
 
 @push('scripts')
@@ -58,7 +55,12 @@
   async function load(page=1){
     const q = document.getElementById('q').value.trim();
     const p = new URLSearchParams({page}); if (q) p.append('q', q);
-    document.getElementById("pager").innerHTML = "<div class=\"d-flex align-items-center\"><div class=\"spinner-border spinner-border-sm me-2\" role=\"status\"></div> Cargando�</div>"; const res = await fetch(`/s360/enc360/psicologos/list?${p.toString()}`); const data = await res.json();
+    showSpinnerIn(document.getElementById('pager'));
+    let data = {};
+    try {
+      const res = await fetch(`/s360/enc360/psicologos/list?${p.toString()}`);
+      data = await res.json();
+    } catch (e) { showToast('Error cargando psicólogos','danger'); return; }
     const tbody = document.getElementById('rows');
     tbody.innerHTML = (data.data||[]).map(r => `<tr>
       <td>${r.name}</td>
@@ -69,11 +71,16 @@
       </td>
     </tr>`).join('');
     const pager = document.getElementById('pager');
-    pager.textContent = `Página ${data.current_page||1} de ${data.last_page||1} • ${data.total||0} psicólogos`;
+    const cur = data.current_page||1; const last = data.last_page||1; const total = data.total||0;
+    pager.innerHTML = `<div class="d-flex justify-content-between align-items-center"><div>Página ${cur} de ${last} • ${total} psicólogos</div><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-secondary" ${cur<=1?'disabled':''} id="pg-prev">« Anterior</button><button class="btn btn-outline-secondary" ${cur>=last?'disabled':''} id="pg-next">Siguiente »</button></div></div>`;
+    const prev = document.getElementById('pg-prev'); const next = document.getElementById('pg-next');
+    if (prev) prev.onclick = ()=>load(cur-1);
+    if (next) next.onclick = ()=>load(cur+1);
   }
   document.addEventListener('DOMContentLoaded', ()=>{
     load();
     document.getElementById('btn-search').addEventListener('click', ()=>load());
+    document.getElementById('q').addEventListener('keydown', (e)=>{ if (e.key==='Enter') { e.preventDefault(); load(); }});
     const btnCreate = document.getElementById('btn-create');
     document.getElementById('btn-create').addEventListener('click', async ()=>{
       const name = document.getElementById('n-name').value.trim();
@@ -91,18 +98,7 @@
       load();
     });
   });
-
-  function showToast(message, type='info'){
-    const wrap = document.createElement('div');
-    wrap.className = 'toast align-items-center text-bg-'+(type==='success'?'success':'primary')+' border-0 position-fixed top-0 end-0 m-3';
-    wrap.setAttribute('role','alert'); wrap.setAttribute('aria-live','assertive'); wrap.setAttribute('aria-atomic','true');
-    wrap.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
-    document.body.appendChild(wrap);
-    const t = new bootstrap.Toast(wrap, {delay:2500}); t.show();
-    wrap.addEventListener('hidden.bs.toast', ()=>wrap.remove());
-  }
 </script>
 @endpush
-@endsection
-
+</x-app-layout>
 

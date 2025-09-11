@@ -173,4 +173,61 @@ class S360PsicoController extends Controller
         Log::info('Historial view', ['beneficiario_id' => $beneficiario->id, 'user_id' => auth()->id()]);
         return view('s360.psico.historial', ['beneficiarioId' => $beneficiario->id]);
     }
+
+    // Agenda semanal del psicólogo: pendientes (next_session_date) y atendidos (session_date)
+    public function agendaSemana(Request $request)
+    {
+        $userId = $request->user()->id;
+        $start = Carbon::now()->startOfWeek();
+        $end = Carbon::now()->endOfWeek();
+
+        $attended = DB::table('salud360_sessions as s')
+            ->join('beneficiarios as b', 's.beneficiario_id', '=', 'b.id')
+            ->where('s.psicologo_id', $userId)
+            ->whereBetween('s.session_date', [$start, $end])
+            ->select(
+                'b.id as beneficiario_id',
+                DB::raw("TRIM(b.nombre || ' ' || b.apellido_paterno || ' ' || b.apellido_materno) as nombre"),
+                's.session_date as fecha'
+            )
+            ->orderBy('s.session_date', 'desc')
+            ->get()
+            ->map(function ($r) {
+                return [
+                    'beneficiario_id' => $r->beneficiario_id,
+                    'nombre' => $r->nombre,
+                    'fecha' => $r->fecha,
+                    'estado' => 'atendido',
+                ];
+            });
+
+        $pending = DB::table('salud360_sessions as s')
+            ->join('beneficiarios as b', 's.beneficiario_id', '=', 'b.id')
+            ->where('s.psicologo_id', $userId)
+            ->whereNotNull('s.next_session_date')
+            ->whereBetween('s.next_session_date', [$start, $end])
+            ->select(
+                'b.id as beneficiario_id',
+                DB::raw("TRIM(b.nombre || ' ' || b.apellido_paterno || ' ' || b.apellido_materno) as nombre"),
+                's.next_session_date as fecha'
+            )
+            ->orderBy('s.next_session_date', 'asc')
+            ->get()
+            ->map(function ($r) {
+                return [
+                    'beneficiario_id' => $r->beneficiario_id,
+                    'nombre' => $r->nombre,
+                    'fecha' => $r->fecha,
+                    'estado' => 'pendiente',
+                ];
+            });
+
+        $byId = [];
+        foreach ($pending as $p) { $byId[$p['beneficiario_id']] = $p; }
+        foreach ($attended as $a) { $byId[$a['beneficiario_id']] = $a; }
+        $items = array_values($byId);
+        usort($items, function ($a, $b) { return strcmp($a['fecha'], $b['fecha']); });
+
+        return response()->json(['items' => $items]);
+    }
 }

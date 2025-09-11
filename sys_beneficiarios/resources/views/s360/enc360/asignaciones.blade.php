@@ -1,6 +1,4 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container py-4">
   <h1 class="h5 mb-3">Asignaciones</h1>
   <div class="card mb-3">
@@ -155,7 +153,7 @@
   }
 </script>
 @endpush
-@endsection
+</x-app-layout>
 
 
 

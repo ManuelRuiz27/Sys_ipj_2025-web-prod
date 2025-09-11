@@ -141,6 +141,7 @@ Route::middleware(['auth','role:psicologo','access.log'])->prefix('s360/psico')-
     Route::get('pacientes', [S360PsicoController::class, 'pacientes'])->name('pacientes')->middleware('permission:s360.psico.read_patients');
     Route::get('paciente/{id}', [S360PsicoController::class, 'showPaciente'])->name('paciente')->middleware('permission:s360.psico.read_patients');
     Route::get('paciente/{id}/show', [S360PsicoController::class, 'pacienteView'])->name('paciente.view');
+    Route::get('agenda-semana', [S360PsicoController::class, 'agendaSemana'])->name('agenda.semana');
     Route::post('sesiones', [S360PsicoController::class, 'storeSesion'])->name('sesiones.store')->middleware('permission:s360.psico.create_session');
     Route::get('sesiones/{beneficiario}', [S360PsicoController::class, 'historial'])->name('sesiones.historial')->middleware('permission:s360.psico.view_history');
     Route::get('sesiones/{beneficiario}/show', [S360PsicoController::class, 'historialView'])->name('sesiones.historial.view');
