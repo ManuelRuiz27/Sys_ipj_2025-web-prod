@@ -89,46 +89,59 @@ class BeneficiarioController extends Controller
 
     public function store(StoreBeneficiarioRequest $request)
     {
+        // Tomamos los datos validados del request
         $data = $request->validated();
 
         try {
             $beneficiario = DB::transaction(function () use ($request, $data) {
+                // Creamos una instancia con los datos básicos
                 $beneficiario = new Beneficiario($data);
-                // Calcular distritos y municipio desde seccional capturado en domicilio
+
+                // Extraemos el bloque de domicilio (si existe) para calcular
+                // distritos y municipio a partir de la seccional.
                 $dom = $request->input('domicilio', []);
                 if ($dom) {
+                    // Asignamos la seccional capturada al beneficiario
                     $beneficiario->seccional = $dom['seccional'] ?? $beneficiario->seccional;
+                    // Calculamos los datos a partir del catálogo de secciones
                     $comp = $this->computeFromSeccional($dom['seccional'] ?? null);
                     if ($comp) {
                         $beneficiario->distrito_local = $comp['distrito_local'];
                         $beneficiario->distrito_federal = $comp['distrito_federal'];
+                        // Preferimos el municipio capturado si se proporcionó
                         $beneficiario->municipio_id = $dom['municipio_id'] ?? $comp['municipio_id'];
-                    } elseif (isset($dom['municipio_id'])) {
-                        $beneficiario->municipio_id = $dom['municipio_id'];
+                    } else {
+                        // Si no se encuentra coincidencia en el catálogo, usamos
+                        // los valores del formulario (si los hay) o asignamos
+                        // valores por defecto para evitar violar restricciones
+                        // NOT NULL en la base de datos.
+                        $beneficiario->distrito_local = $dom['distrito_local'] ?? '';
+                        $beneficiario->distrito_federal = $dom['distrito_federal'] ?? '';
+                        $beneficiario->municipio_id = $dom['municipio_id'] ?? null;
                     }
                 }
-                $beneficiario->id = (string) Str::uuid();
-                $beneficiario->created_by = Auth::user()->uuid;
 
-                if (!$beneficiario->save()) {
+                // Generamos un uuid para el beneficiario y asociamos al usuario
+                $beneficiario->id = (string) Str::uuid();
+                $beneficiario->created_by = Auth::user()->uuid ?? (string) Auth::id();
+
+                if (! $beneficiario->save()) {
                     throw new \RuntimeException('No se pudo guardar el beneficiario');
                 }
 
+                // Guardamos su domicilio asociado
                 $this->saveDomicilio($request, $beneficiario);
-
                 return $beneficiario;
             });
         } catch (\Throwable $e) {
             Log::error('Error al registrar beneficiario', [
                 'message' => $e->getMessage(),
-                'user_id' => Auth::user()?->uuid,
+                'user_id' => Auth::user()?->id,
             ]);
-
             return back()
                 ->withInput()
                 ->with('error', 'No se pudo registrar el beneficiario, intenta nuevamente.');
         }
-
         return redirect()->route('beneficiarios.create')
             ->with('status', 'Registrado')
             ->with('last_beneficiario_id', $beneficiario->id)
@@ -157,8 +170,12 @@ class BeneficiarioController extends Controller
                 $beneficiario->distrito_local = $comp['distrito_local'];
                 $beneficiario->distrito_federal = $comp['distrito_federal'];
                 $beneficiario->municipio_id = $dom['municipio_id'] ?? $comp['municipio_id'];
-            } elseif (isset($dom['municipio_id'])) {
-                $beneficiario->municipio_id = $dom['municipio_id'];
+            } else {
+                // Si no se encuentra en catálogo, se mantienen los valores
+                // actuales y sólo se actualizan si se proporcionan desde el formulario.
+                $beneficiario->distrito_local = $dom['distrito_local'] ?? $beneficiario->distrito_local;
+                $beneficiario->distrito_federal = $dom['distrito_federal'] ?? $beneficiario->distrito_federal;
+                $beneficiario->municipio_id = $dom['municipio_id'] ?? $beneficiario->municipio_id;
             }
         }
         $beneficiario->save();

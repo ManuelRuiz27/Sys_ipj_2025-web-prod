@@ -23,25 +23,28 @@ Revisa en `.env` (valores por defecto para Docker):
 - `DB_USERNAME=root`
 - `DB_PASSWORD=secret`
 
-2) Levanta contenedores desde la raÃ­z del repo:
+2) Arranque del stack (un solo comando desde la raA-z del repo):
 
-```
-# Ejecutar desde el directorio raÃ­z del repo
+````
+# Ejecutar desde el directorio raA-z del repo
 cd ..
-docker compose up -d --build
-```
+docker compose up --build
+````
 
-3) Inicializa la app (clave, migraciones, seeders, assets):
+El primer arranque puede tardar porque:
+- `app` instala dependencias de Composer si faltan, espera la base MySQL y ejecuta `php artisan migrate --force --seed` (solo la primera vez) antes de iniciar PHP-FPM.
+- `node` instala dependencias de npm si faltan y deja `npm run dev -- --host 0.0.0.0 --port 5173 --strictPort` corriendo para servir los assets via Vite.
 
-```
-# Dentro del contenedor app
-docker compose exec app php artisan key:generate
-# Migraciones + seeders base (roles, admin y catÃ¡logos si hay CSVs)
-docker compose exec app php artisan migrate --seed
-# CompilaciÃ³n de assets
-docker compose exec node npm install
-docker compose exec node npm run build
-```
+Si preferA-s modo desapegado, agrega `-d` al comando (`docker compose up -d --build`).
+
+3) Seguimiento del arranque (opcional):
+
+````
+docker compose logs -f app
+docker compose logs -f node
+````
+
+Cuando ambos muestren que Laravel y Vite estA-n listos, la app queda operativa.
 
 4) Acceso web:
 
@@ -176,7 +179,7 @@ Proyecto interno del equipo. Uso restringido segÃºn polÃ­ticas vigentes.
 ## API REST /api/v1
 
 ### Setup local
-1. Duplicar `.env.example` a `.env` y definir `APP_URL`, variables `DB_*`, `SANCTUM_STATEFUL_DOMAINS` y los orígenes `APP_IPJ_URL` / `APP_IPJ_PROD_URL`.
+1. Duplicar `.env.example` a `.env` y definir `APP_URL`, variables `DB_*`, `SANCTUM_STATEFUL_DOMAINS` y los orï¿½genes `APP_IPJ_URL` / `APP_IPJ_PROD_URL`.
 2. Instalar dependencias de backend y frontend: `composer install` y `npm install`.
 3. Generar clave y cargar base de datos:
    - `php artisan key:generate`
@@ -187,19 +190,26 @@ Proyecto interno del equipo. Uso restringido segÃºn polÃ­ticas vigentes.
    - `php artisan migrate`
 5. Ejecutar pruebas con Pest: `./vendor/bin/pest`.
 
-### Estándares de código
-- PSR-12 y guías de Laravel: ejecutar `./vendor/bin/pint` antes de subir cambios.
-- Organización de carpetas:
-  - `app/Http/Controllers/Auth` para endpoints de autenticación REST.
+### Estï¿½ndares de cï¿½digo
+- PSR-12 y guï¿½as de Laravel: ejecutar `./vendor/bin/pint` antes de subir cambios.
+- Organizaciï¿½n de carpetas:
+  - `app/Http/Controllers/Auth` para endpoints de autenticaciï¿½n REST.
   - `app/Http/Middleware` para cross-cutting concerns (ProblemJson, ETag, AccessLog).
   - `app/Http/Requests` para validaciones.
   - `app/Policies` y `app/Providers` para policies y gates.
-  - `app/Services` reservado para lógica de dominio reusable.
-- Rutas en kebab-case (`beneficiarios.index`), clases en StudlyCase y métodos en camelCase.
+  - `app/Services` reservado para lï¿½gica de dominio reusable.
+- Rutas en kebab-case (`beneficiarios.index`), clases en StudlyCase y mï¿½todos en camelCase.
 
 ### Comportamiento clave
 - `GET /api/v1/health` ? `200` + body `{ "status": "ok" }` con cabecera `ETag`.
 - `POST /api/v1/auth/login` ? `200` con token personal Sanctum (`token_type: Bearer`).
 - `POST /api/v1/auth/logout` ? `204` invalidando el token actual.
-- Errores de validación devuelven `422` en formato `application/problem+json`.
+- Errores de validaciï¿½n devuelven `422` en formato `application/problem+json`.
 - Respuestas JSON cacheables incluyen `ETag` y respetan `If-None-Match` devolviendo `304` cuando aplica.
+
+- cp sys_beneficiarios/.env.example sys_beneficiarios/.env
+docker compose up -d --build
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+docker compose exec node npm install
+docker compose exec node npm run build
